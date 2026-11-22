@@ -1,0 +1,24 @@
+{
+  "liveEnabled": false,
+  "allowedMints": [
+    "So11111111111111111111111111111111111111112",
+    "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+  ],
+  "allocationUsdc": 100000000,
+  "entryUsdc": 10000000,
+  "perTradeUsdc": 25000000,
+  "perAssetUsdc": 30000000,
+  "totalExposureUsdc": 30000000,
+  "dailyTurnoverUsdc": 60000000,
+  "dailyLossUsdc": 5000000,
+  "maxQuoteAgeMs": 10000,
+  "maxSlippageBps": 100,
+  "maxImpactBps": 100,
+  "simAdverseBps": 50,
+  "feeAllowanceUsdc": 20000,
+  "lookback": 3,
+  "entryBps": 100,
+  "exitBps": 50,
+  "maxSampleGapMs": 180000,
+  "intervalSeconds": 60
+}

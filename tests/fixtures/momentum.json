@@ -1,0 +1,20 @@
+{
+  "kind": "synthetic",
+  "description": "Fabricated minute marks and two exact-size orders for plumbing checks.",
+  "ticks": [
+    { "atMs": 1767225600000,
+      "mark": {"inputMint":"So11111111111111111111111111111111111111112","outputMint":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","swapMode":"ExactIn","inAmount":"100000000","outAmount":"10000000","otherAmountThreshold":"9950000","slippageBps":50,"priceImpact":-0.05,"feeBps":2} },
+    { "atMs": 1767225660000,
+      "mark": {"inputMint":"So11111111111111111111111111111111111111112","outputMint":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","swapMode":"ExactIn","inAmount":"100000000","outAmount":"10100000","otherAmountThreshold":"10049500","slippageBps":50,"priceImpact":-0.05,"feeBps":2} },
+    { "atMs": 1767225720000,
+      "mark": {"inputMint":"So11111111111111111111111111111111111111112","outputMint":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","swapMode":"ExactIn","inAmount":"100000000","outAmount":"10200000","otherAmountThreshold":"10149000","slippageBps":50,"priceImpact":-0.05,"feeBps":2} },
+    { "atMs": 1767225780000,
+      "mark": {"inputMint":"So11111111111111111111111111111111111111112","outputMint":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","swapMode":"ExactIn","inAmount":"100000000","outAmount":"10400000","otherAmountThreshold":"10348000","slippageBps":50,"priceImpact":-0.05,"feeBps":2},
+      "order": {"inputMint":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","outputMint":"So11111111111111111111111111111111111111112","swapMode":"ExactIn","inAmount":"10000000","outAmount":"96000000","otherAmountThreshold":"95520000","slippageBps":50,"priceImpact":-0.05,"feeBps":2} },
+    { "atMs": 1767225840000,
+      "mark": {"inputMint":"So11111111111111111111111111111111111111112","outputMint":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","swapMode":"ExactIn","inAmount":"100000000","outAmount":"10600000","otherAmountThreshold":"10547000","slippageBps":50,"priceImpact":-0.05,"feeBps":2} },
+    { "atMs": 1767225900000,
+      "mark": {"inputMint":"So11111111111111111111111111111111111111112","outputMint":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","swapMode":"ExactIn","inAmount":"100000000","outAmount":"9900000","otherAmountThreshold":"9850500","slippageBps":50,"priceImpact":-0.05,"feeBps":2},
+      "order": {"inputMint":"So11111111111111111111111111111111111111112","outputMint":"EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v","swapMode":"ExactIn","inAmount":"95520000","outAmount":"9456480","otherAmountThreshold":"9409197","slippageBps":50,"priceImpact":-0.05,"feeBps":2} }
+  ]
+}
