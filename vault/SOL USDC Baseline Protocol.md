@@ -29,7 +29,9 @@ Use integer lamports and micro-USDC for settlement. Size each buy within the ent
 
 For a nominal fill, worsen observed VWAP by 50 bps in the direction of the trade and charge 0.02 USDC separately. The 50 bps is a combined assumed execution adjustment for the historical print proxy, including unobserved adverse price and proportional cost. It is a scenario input. Avoid adding a second unmeasured proportional fee on top. The stress scenario uses 100 bps, 0.04 USDC and the additional hourly bar. Quote availability, causal delay, route fees and order-size effects still need measurement. List data-service cost separately from simulated trading costs.
 
-Mark both SOL comparators at the conservative hypothetical sale price including the fee. Report daily buy-and-hold marks, and calculate max drawdown from the full hourly equity sequence. Use the last usable proxy within each scoring window for net liquidation valuation with the same scenario costs. Record residual SOL immediately before that adjustment and separately count strategy fills and round trips. A reporting valuation produces no additional strategy fill in those counts.
+Mark both SOL comparators at the conservative hypothetical sale price including the fee. The evaluator uses the starter’s 0.1 SOL probe for that mark and the shared paper risk gate for settlement. Momentum compares the full eight-decimal VWAP. Trade sizes are computed at the scheduled fill using the current simulated balances and caps. The entry and exit costs are applied once to the proxy.
+
+Report daily buy-and-hold marks, and calculate max drawdown from the full hourly equity sequence. Use the last usable proxy within each scoring window for net liquidation valuation with the same scenario costs. Record residual SOL immediately before that adjustment and separately count strategy fills and round trips. A reporting valuation produces no additional strategy fill in those counts.
 
 ## Acceptance and reporting
 
@@ -37,4 +39,12 @@ Record dataset hash, protocol ID, code revision, coverage, held-out status, miss
 
 Use the draft eligibility gates in [[Research]] for teammate approval before evaluating. A candidate needs positive net P&L and an improvement over cash and buy-and-hold, at most 5% peak-to-trough drawdown and at least 30 completed round trips in both the final holdout and at least 30 days of forward paper. Stress must retain positive net P&L and drawdown at most 5%. A later model also has to beat the fixed momentum comparator. Insufficient coverage or sample size leaves the gate unevaluated.
 
-Historical outcomes are pending an approved dataset and protocol. The initial 168-hour data slice verifies extraction and reproducibility.
+## Run a reviewed interval
+
+The offline evaluator accepts one local CSV or Parquet slice at a time. Use the exact bar-start dates for the selected interval. The final bar can be present in the dataset coverage report but scores no mark or fill if its availability timestamp reaches the next interval. For a historical run, set `$approvedDatasetSha256` to the reviewed canonical hash for that interval. Parquet inputs require the same optional DuckDB dependency as the export checker.
+
+```powershell
+py -3.12 -m vault.run_baselines local/development-1.parquet --window development-1 --evidence historical --revision (git rev-parse HEAD) --expected-sha256 $approvedDatasetSha256
+```
+
+The command reports cash, buy-and-hold and momentum for both cost scenarios and applies the coverage check before scoring. Keep the output local and use it to record the reviewed experiment. The evaluator has been exercised on synthetic bars. Historical outcomes await an approved dataset and protocol. The initial 168-hour data slice verifies extraction and reproducibility.

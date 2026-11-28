@@ -76,24 +76,59 @@ def parse_row(raw):
     return start, end, available, sold, bought, conflicts, *market_values
 
 
-def read_export(path, start, end):
+def index_rows(records, start, end):
     rows = {}
-    with path.open(encoding="utf-8-sig", newline="") as source:
-        reader = csv.reader(source, strict=True)
-        if tuple(next(reader, [])) != COLUMNS:
-            raise ValueError("CSV header does not match the hourly bars query")
-        for raw in reader:
-            try:
-                row = parse_row(raw)
-                hour = row[0]
-                if not start <= hour < end:
-                    raise ValueError("row falls outside the requested UTC window")
-                if hour in rows:
-                    raise ValueError("duplicate UTC hour")
-                rows[hour] = row
-            except (InvalidOperation, ValueError) as error:
-                raise ValueError(f"CSV line {reader.line_num}: {error}") from error
+    for location, raw in records:
+        try:
+            row = parse_row(raw)
+            hour = row[0]
+            if not start <= hour < end:
+                raise ValueError("row falls outside the requested UTC window")
+            if hour in rows:
+                raise ValueError("duplicate UTC hour")
+            rows[hour] = row
+        except (InvalidOperation, ValueError) as error:
+            raise ValueError(f"{location}: {error}") from error
     return rows
+
+
+def read_export(path, start, end):
+    if path.suffix.lower() == ".parquet":
+        return index_rows(parquet_records(path), start, end)
+    try:
+        with path.open(encoding="utf-8-sig", newline="") as source:
+            reader = csv.reader(source, strict=True)
+            if tuple(next(reader, [])) != COLUMNS:
+                raise ValueError("CSV header does not match the hourly bars query")
+            records = ((f"CSV line {reader.line_num}", raw) for raw in reader)
+            return index_rows(records, start, end)
+    except csv.Error as error:
+        raise ValueError(f"invalid CSV: {error}") from error
+
+
+def parquet_records(path):
+    if not path.is_file():
+        raise FileNotFoundError(f"local Parquet file not found: {path}")
+    try:
+        import duckdb
+    except ImportError as error:
+        raise ValueError("reading Parquet requires the DuckDB Python package") from error
+    try:
+        with duckdb.connect() as db:
+            db.execute("SET TimeZone = 'UTC'")
+            schema = db.execute("DESCRIBE SELECT * FROM read_parquet(?)", [str(path)]).fetchall()
+            if tuple(column[0] for column in schema) != COLUMNS:
+                raise ValueError("Parquet columns do not match the hourly bars query")
+            # These identifiers come from the fixed export schema above.
+            projection = ", ".join(f"CAST({name} AS VARCHAR)" for name in COLUMNS)
+            result = db.execute(f"SELECT {projection} FROM read_parquet(?)", [str(path)])
+            index = 1
+            while batch := result.fetchmany(128):
+                for raw in batch:
+                    yield f"Parquet row {index}", [value if value is not None else "" for value in raw]
+                    index += 1
+    except duckdb.Error as error:
+        raise ValueError(f"Parquet read failed: {error}") from error
 
 
 def canonical_bytes(rows):
@@ -180,7 +215,7 @@ def write_parquet(path, rows):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("csv", type=Path, help="local export from SOL USDC Hourly Bars.sql")
+    parser.add_argument("export", type=Path, help="local CSV or Parquet export from SOL USDC Hourly Bars.sql")
     parser.add_argument("--start", type=date.fromisoformat, required=True, help="inclusive UTC date (YYYY-MM-DD)")
     parser.add_argument("--end", type=date.fromisoformat, required=True, help="exclusive UTC date (YYYY-MM-DD)")
     parser.add_argument("--for-scoring", action="store_true", help="apply coverage thresholds to this scored interval")
@@ -191,11 +226,11 @@ def main():
     start = datetime.combine(args.start, time.min, tzinfo=UTC)
     end = datetime.combine(args.end, time.min, tzinfo=UTC)
     try:
-        rows = read_export(args.csv, start, end)
+        rows = read_export(args.export, start, end)
         report = audit(rows, start, end, args.for_scoring)
         if args.parquet is not None and report["passed"]:
             report["parquet_sha256"] = write_parquet(args.parquet, [rows[hour] for hour in sorted(rows)])
-    except (csv.Error, OSError, OverflowError, ValueError) as error:
+    except (OSError, OverflowError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 1
     print(json.dumps(report, indent=2))
