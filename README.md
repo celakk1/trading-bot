@@ -4,11 +4,11 @@ A local Solana SOL/USDC bot for replaying and paper trading a simple momentum ru
 
 ## First local check in PowerShell
 
-Install Python 3.12 and Git, then run from the clone root. The starter was tested on Windows with Python 3.12.14. If your Python 3.12 executable is `py -3.12` or `python`, substitute it for `python3.12` after checking its version.
+Install Python 3.12 and Git, then run from the clone root. The starter was tested on Windows with Python 3.12.14. The commands use the Windows Python launcher. If your installation exposes Python 3.12 as `python` or `python3.12`, use that command in the first two lines after verifying its version.
 
 ```powershell
-python3.12 --version
-python3.12 -m venv .venv
+py -3.12 --version
+py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
 .\.venv\Scripts\python.exe -m pytest -q
 .\.venv\Scripts\python.exe -m jupiter_bot replay
@@ -44,7 +44,13 @@ Leave the pause file in place while paused. It applies to all ledgers in that di
 - Simulated proceeds use the lower of the minimum quoted output and expected output reduced by 50 bps. The simulation charges 0.02 USDC separately per fill as an allowance for costs outside the quote. The reported route fee is treated as embedded in the quote. Equity adds cash to SOL valued at the conservative probe rate, with an exit fee allowance deducted from the SOL value and that position value floored at zero. The UTC day rolls on the first usable mark after midnight. Its opening equity is the last valid valuation, so overnight gaps count toward the new day’s loss. A stale, missing, or rejected mark leaves the last equity unchanged and blocks new trades. An invalid config or unusable ledger stops the CLI.
 - Each decision records integer balances, the mark and trade quote when available, intent, rejection or simulated fill, and strategy, policy, and config identifiers. Field details are in the JSON output and the local `decisions` table. Treat local history and quote traffic as private. Keep any API or data charges in a separate service budget.
 
-## Private GitHub setup checklist for the owner
+## Repository review and CI
+
+The team uses PRs into `main`. Before merging, confirm one teammate approval and a passing `offline-tests` job. Follow both checks when reviewing the PR, including when a GitHub setting allows a merge sooner. See [AGENTS.md](AGENTS.md) and the [Tests workflow](.github/workflows/test.yml).
+
+## Private repository setup reference for the owner
+
+Use this checklist when creating a separate private repository. The teammate onboarding steps below use the existing `celakk1/trading-bot` repository.
 
 - [ ] Review the files and first local checks. Run `git status --short --untracked-files=all` and `git remote -v`. This bootstrap initializes `main` locally. Create the initial commit yourself after inspecting the staged file list and diff for secrets, wallet files, live logs, databases, data and personal settings.
 - [ ] If no remote is configured, use one of the creation paths below. If there is an existing remote to preserve, first verify its owner, visibility and history. Keep its URL and reconcile histories before pushing to it. Use a distinct remote name if connecting another repository.
@@ -71,12 +77,14 @@ git push -u origin main
 2. Clone and run the first local check above.
 
    ```powershell
-   git clone https://github.com/OWNER/REPO.git
-   Set-Location REPO
+   git clone https://github.com/celakk1/trading-bot.git
+   Set-Location trading-bot
    ```
 
 3. In Obsidian choose **Open folder as vault**, select the clone’s `vault/` folder, and open `Home.md`. Git carries shared Markdown changes through PRs. Keep Obsidian configuration, cache and trash local. [Obsidian sync methods](https://obsidian.md/help/sync-notes)
 4. Ask your AI coding assistant to read [AGENTS.md](AGENTS.md) at the start of each session if it does not load it automatically. Claim one issue and a scoped branch, then use the PR workflow in that file.
+
+For the proposed local paper tools, see the [draft MCP contract](vault/Paper%20MCP%20Contract.md).
 
 ## Eventual wallet operations
 
