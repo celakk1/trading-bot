@@ -94,6 +94,27 @@ def testStaleMarkRejectionRecordsNoFill(monkeypatch, capsys, tmp_path, frames):
     assert events[-1]["state"]["equityUsdc"] == 100_000_000
 
 
+def testMissingMarkPreservesPositionAndBreaksLookback(monkeypatch, capsys, tmp_path, frames):
+    del frames[4]["mark"]
+    fixture = tmp_path / "missing.json"
+    fixture.write_text(json.dumps({"kind": "synthetic", "ticks": frames}), encoding="utf-8")
+    db = tmp_path / "missing.sqlite"
+    events = invoke(monkeypatch, capsys, "replay", "--fixture", fixture, "--db", db)
+
+    buy, missing, recovered = readLedger(db)[3:]
+    assert events[3:] == [buy, missing, recovered]
+    assert buy["status"] == "simulated_fill" and buy["intent"]["side"] == "buy"
+    assert missing["status"] == "rejected" and missing["reason"] == "missing_quote"
+    assert missing["usableMark"] is False
+    assert missing["intent"] is None and missing["fill"] is None
+    assert missing["state"] == buy["state"]
+    assert recovered["status"] == "hold" and recovered["usableMark"] is True
+    assert recovered["intent"] is None and recovered["fill"] is None
+    assert recovered["state"]["cashUsdc"] == buy["state"]["cashUsdc"]
+    assert recovered["state"]["solLamports"] == buy["state"]["solLamports"]
+    assert recovered["state"]["equityUsdc"] != missing["state"]["equityUsdc"]
+
+
 def testPauseKeepsMarkingAndSkipsSettlement(monkeypatch, capsys, tmp_path):
     (tmp_path / "PAUSE").touch()
     events = invoke(monkeypatch, capsys, "replay", "--db", tmp_path / "paused.sqlite")
@@ -114,11 +135,13 @@ def testUtcResetUsesLastValuationAndRetainsOvernightLoss(cfg, frames):
     )
 
 
-def testPaperBoundedRunSharesReplayLoop(monkeypatch, capsys, tmp_path, frames):
+def testPaperResumesAfterBuyWithoutDuplicateSettlement(monkeypatch, capsys, tmp_path, frames):
     position = 0
+    requests = []
 
     class FakeJupiter:
         def quote(self, *request):
+            requests.append(position)
             return cli.fixtureQuote(frames[position], *request)
 
     def nextFrame(seconds):
@@ -130,7 +153,16 @@ def testPaperBoundedRunSharesReplayLoop(monkeypatch, capsys, tmp_path, frames):
     monkeypatch.setattr(cli, "nowMs", lambda: frames[position]["atMs"])
     monkeypatch.setattr(cli.time, "sleep", nextFrame)
     db = tmp_path / "paper.sqlite"
-    paper = invoke(monkeypatch, capsys, "paper", "--db", db, "--ticks", len(frames))
+    firstRun = invoke(monkeypatch, capsys, "paper", "--db", db, "--ticks", 4)
+    assert firstRun[-1]["status"] == "simulated_fill" and firstRun[-1]["intent"]["side"] == "buy"
+    assert firstRun == readLedger(db)
+
+    requests.clear()
+    resumed = invoke(monkeypatch, capsys, "paper", "--db", db, "--ticks", len(frames) - position)
+    assert resumed[0] == {"tickMs": firstRun[-1]["tickMs"], "status": "duplicate_tick"}
+    assert requests == [4, 5, 5]
+    assert resumed[-1]["status"] == "simulated_fill" and resumed[-1]["intent"]["side"] == "sell"
+    paper = firstRun + resumed[1:]
     replay = invoke(monkeypatch, capsys, "replay", "--db", tmp_path / "replay.sqlite")
     assert paper == readLedger(db)
     assert [{**event, "mode": "replay"} for event in paper] == replay
