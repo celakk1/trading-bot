@@ -1,0 +1,184 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "tools": [
+    {"name": "get_status", "inputSchema": {"$ref": "#/$defs/emptyInput"}, "outputSchema": {"$ref": "#/$defs/status"}},
+    {"name": "get_positions", "inputSchema": {"$ref": "#/$defs/emptyInput"}, "outputSchema": {"$ref": "#/$defs/positions"}},
+    {"name": "list_decisions", "inputSchema": {"$ref": "#/$defs/decisionPageInput"}, "outputSchema": {"$ref": "#/$defs/decisionPage"}},
+    {"name": "get_market_snapshot", "inputSchema": {"$ref": "#/$defs/emptyInput"}, "outputSchema": {"$ref": "#/$defs/marketSnapshot"}},
+    {"name": "propose_trade", "inputSchema": {"$ref": "#/$defs/proposalInput"}, "outputSchema": {"$ref": "#/$defs/proposalResult"}}
+  ],
+  "$defs": {
+    "emptyInput": {"type": "object", "additionalProperties": false},
+    "timeMs": {"type": "integer", "minimum": 0, "maximum": 9007199254740991},
+    "nullableTimeMs": {"anyOf": [{"$ref": "#/$defs/timeMs"}, {"type": "null"}]},
+    "amount": {"type": "string", "pattern": "^(0|[1-9][0-9]{0,18})(?![\\s\\S])"},
+    "positiveAmount": {"type": "string", "pattern": "^[1-9][0-9]{0,18}(?![\\s\\S])"},
+    "sol": {"const": "So11111111111111111111111111111111111111112"},
+    "usdc": {"const": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"},
+    "mint": {"anyOf": [{"$ref": "#/$defs/sol"}, {"$ref": "#/$defs/usdc"}]},
+    "reason": {
+      "enum": [
+        "paused", "invalid_amount", "mint_allowlist", "missing_quote", "stale_quote",
+        "slippage_cap", "price_impact_cap", "quote_mismatch", "trade_cap", "daily_turnover_cap",
+        "insufficient_output", "insufficient_balance", "balance_out_of_range",
+        "per_asset_cap", "total_exposure_cap", "daily_loss_cap"
+      ]
+    },
+    "status": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "nowMs", "headTickMs", "paused", "configId", "strategyVersion", "policyVersion"],
+      "properties": {
+        "mode": {"const": "paper"},
+        "nowMs": {"$ref": "#/$defs/timeMs"},
+        "headTickMs": {"$ref": "#/$defs/nullableTimeMs"},
+        "paused": {"type": "boolean"},
+        "configId": {"type": "string", "pattern": "^[0-9a-f]{64}(?![\\s\\S])"},
+        "strategyVersion": {"type": "string", "minLength": 1, "maxLength": 64},
+        "policyVersion": {"type": "string", "minLength": 1, "maxLength": 64}
+      }
+    },
+    "positions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["headTickMs", "cashUsdc", "solLamports", "valuation"],
+      "properties": {
+        "headTickMs": {"$ref": "#/$defs/nullableTimeMs"},
+        "cashUsdc": {"$ref": "#/$defs/amount"},
+        "solLamports": {"$ref": "#/$defs/amount"},
+        "valuation": {
+          "anyOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["evaluatedMs", "equityUsdc"],
+              "properties": {
+                "evaluatedMs": {"$ref": "#/$defs/timeMs"},
+                "equityUsdc": {"$ref": "#/$defs/amount"}
+              }
+            }
+          ]
+        }
+      }
+    },
+    "decisionPageInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "limit": {"type": "integer", "minimum": 1, "maximum": 100, "default": 20},
+        "beforeTickMs": {"$ref": "#/$defs/timeMs"}
+      }
+    },
+    "decision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["tickMs", "evaluatedMs", "status", "reason", "side", "fill"],
+      "properties": {
+        "tickMs": {"$ref": "#/$defs/timeMs"},
+        "evaluatedMs": {"$ref": "#/$defs/timeMs"},
+        "status": {"enum": ["hold", "rejected", "simulated_fill"]},
+        "reason": {"anyOf": [{"$ref": "#/$defs/reason"}, {"type": "null"}]},
+        "side": {"enum": ["buy", "sell", null]},
+        "fill": {
+          "anyOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["inputUnits", "outputUnits", "feeAllowanceUsdc"],
+              "properties": {
+                "inputUnits": {"$ref": "#/$defs/positiveAmount"},
+                "outputUnits": {"$ref": "#/$defs/positiveAmount"},
+                "feeAllowanceUsdc": {"$ref": "#/$defs/amount"}
+              }
+            }
+          ]
+        }
+      }
+    },
+    "decisionPage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["items", "nextBeforeTickMs"],
+      "properties": {
+        "items": {"type": "array", "maxItems": 100, "items": {"$ref": "#/$defs/decision"}},
+        "nextBeforeTickMs": {"$ref": "#/$defs/nullableTimeMs"}
+      }
+    },
+    "marketSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["headTickMs", "status", "mark"],
+      "properties": {
+        "headTickMs": {"$ref": "#/$defs/nullableTimeMs"},
+        "status": {"enum": ["fresh", "stale", "missing", "rejected"]},
+        "mark": {
+          "anyOf": [
+            {"type": "null"},
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["inputMint", "outputMint", "inputUnits", "outUnits", "minOutUnits", "observedMs", "expiresMs"],
+              "properties": {
+                "inputMint": {"$ref": "#/$defs/sol"},
+                "outputMint": {"$ref": "#/$defs/usdc"},
+                "inputUnits": {"const": "100000000"},
+                "outUnits": {"$ref": "#/$defs/positiveAmount"},
+                "minOutUnits": {"$ref": "#/$defs/positiveAmount"},
+                "observedMs": {"$ref": "#/$defs/timeMs"},
+                "expiresMs": {"$ref": "#/$defs/nullableTimeMs"}
+              }
+            }
+          ]
+        }
+      },
+      "if": {"properties": {"status": {"const": "missing"}}},
+      "then": {"properties": {"mark": {"type": "null"}}},
+      "else": {"properties": {"mark": {"type": "object"}, "headTickMs": {"$ref": "#/$defs/timeMs"}}}
+    },
+    "proposalInput": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["idempotencyKey", "side", "inputMint", "outputMint", "maxInputUnits", "evidenceTickMs", "expiresMs", "rationale"],
+      "properties": {
+        "idempotencyKey": {"type": "string", "pattern": "^[a-zA-Z0-9_-]{16,64}(?![\\s\\S])"},
+        "side": {"enum": ["buy", "sell"]},
+        "inputMint": {"$ref": "#/$defs/mint"},
+        "outputMint": {"$ref": "#/$defs/mint"},
+        "maxInputUnits": {"$ref": "#/$defs/positiveAmount"},
+        "evidenceTickMs": {"$ref": "#/$defs/timeMs"},
+        "expiresMs": {"$ref": "#/$defs/timeMs"},
+        "rationale": {"type": "string", "minLength": 1, "maxLength": 280}
+      },
+      "if": {"properties": {"side": {"const": "buy"}}},
+      "then": {"properties": {"inputMint": {"$ref": "#/$defs/usdc"}, "outputMint": {"$ref": "#/$defs/sol"}}},
+      "else": {"properties": {"inputMint": {"$ref": "#/$defs/sol"}, "outputMint": {"$ref": "#/$defs/usdc"}}}
+    },
+    "proposalResult": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["mode", "proposalId", "status", "reason", "acceptedInputUnits", "expiresMs"],
+      "properties": {
+        "mode": {"const": "paper"},
+        "proposalId": {"type": "string", "pattern": "^[a-zA-Z0-9_-]{16,64}(?![\\s\\S])"},
+        "status": {"enum": ["accepted", "rejected", "expired"]},
+        "reason": {"anyOf": [{"$ref": "#/$defs/reason"}, {"enum": ["stale_evidence", "state_changed", "proposal_expired", null]}]},
+        "acceptedInputUnits": {"anyOf": [{"$ref": "#/$defs/positiveAmount"}, {"type": "null"}]},
+        "expiresMs": {"$ref": "#/$defs/timeMs"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "accepted"}}},
+          "then": {"properties": {"reason": {"type": "null"}, "acceptedInputUnits": {"type": "string"}}},
+          "else": {"properties": {"reason": {"type": "string"}, "acceptedInputUnits": {"type": "null"}}}
+        },
+        {
+          "if": {"properties": {"status": {"const": "expired"}}},
+          "then": {"properties": {"reason": {"const": "proposal_expired"}}},
+          "else": {"properties": {"reason": {"not": {"const": "proposal_expired"}}}}
+        }
+      ]
+    }
+  }
+}
